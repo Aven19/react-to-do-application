@@ -1,20 +1,31 @@
 import "./App.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { useEffect, useState } from "react";
-import { collection, doc, setDoc, getDoc, getDocs, deleteDoc  } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  orderBy,
+} from "firebase/firestore";
 
 function App({ db }) {
   useEffect(() => {
-    getDocs(collection(db, "tasks")).then((querySnapshot) => {
-      // console.log(JSON.stringify(doc))
-      const allTasks = [];
-      querySnapshot.forEach((doc) => {
-        allTasks.push(doc.data().tasks);
-      });
-      if (allTasks.length) {
-        setTasks(allTasks);
+    getDocs(query(collection(db, "tasks"), orderBy("time", "desc"))).then(
+      (querySnapshot) => {
+        const allTasks = [];
+        querySnapshot.forEach((doc) => {
+          allTasks.push(doc.data());
+        });
+        if (allTasks.length) {
+          setTasks(allTasks);
+        }
       }
-    });
+    );
   }, []);
 
   const [task, setTask] = useState({ name: "", completed: false });
@@ -26,17 +37,35 @@ function App({ db }) {
         key={index}
         className={
           task.completed
-            ? "list-group-item list-group-item-success"
-            : "list-group-item list-group-item-danger"
+            ? "list-group-item list-group-item-danger d-flex align-items-center border-0 mb-2 rounded"
+            : "list-group-item list-group-item-success d-flex align-items-center border-0 mb-2 rounded"
         }
-        // onClick={() => {
-        //   updateTask(index);
-        // }}
-        onDoubleClick={() => {
-          deleteTask(index);
-        }}
+
+        style={{ backgroundColor: "#f4f6f7" }}
       >
-        {task.name}
+        {task.completed ? <s>{task.name}</s> : task.name}
+        
+        <div className="right">
+          <button
+            type="button"
+            className=" btn btn-sm btn-success custom-mr"
+            onClick={() => {
+              updateTask(index);
+            }}  
+          >
+          {task.completed ? 'Completed' : 'Update status'}
+
+          </button>
+          <button
+            type="button"
+            className=" btn btn-sm btn-danger custom-mr"
+            onClick={() => {
+              deleteTask(index);
+            }}
+          >
+            Delete Task
+          </button>
+        </div>
       </li>
     ));
   };
@@ -47,39 +76,28 @@ function App({ db }) {
 
     const newTask = { ...task, id: taskRef.id, time: new Date() };
 
-    setDoc(doc(db, "tasks", taskRef.id), {
-      tasks: newTask,
-    }).then(() => {
+    setDoc(doc(db, "tasks", taskRef.id), newTask).then(() => {
       setTasks([...tasks, newTask]);
     });
   };
 
   const deleteTaskFromFirebase = (task) => {
-    // const taskRef = collection(db, "tasks");
-    console.log(task.id);
-    // const taskRef = getDoc(doc(db, "tasks", task.id));
-    deleteDoc(doc(db, "tasks", task.id));
-    setTasks(tasks.filter(t=> t.id!==task.id));
-    // setDoc(doc(db, "tasks", taskRef.id),{
-    //   tasks: newTask,
-    // }).then(() => {
-    //   setTasks([...tasks, newTask]);
-    // });
+    deleteDoc(doc(db, "tasks", task.id)).then(() => {
+      setTasks(tasks.filter((t) => t.id !== task.id));
+    });
   };
 
-  // const storeTasks = (tasks) => {
-  //   setTasks(tasks);
-  //   setDoc(doc(db, "tasks", "first"), {
-  //     tasks: tasks,
-  //   });
-  // };
+  const updateTaskFromFirebase = (task, i) => {
+    updateDoc(doc(db, "tasks", task.id), task).then(() => {
+      const allTasks = [...tasks];
+      allTasks.splice(i, 1, task);
+      setTasks(allTasks);
+    });
+  };
 
   const updateTask = (i) => {
-    const newTasks = [...tasks];
-    newTasks.splice(i, 1, {
-      name: newTasks[i].name,
-      completed: !newTasks[i].completed,
-    });
+    const updatedTask = { ...tasks[i], completed: !tasks[i].completed };
+    updateTaskFromFirebase(updatedTask, i);
   };
 
   const deleteTask = (i) => {
@@ -90,7 +108,7 @@ function App({ db }) {
   const addTask = (t) => {
     console.log(t.name);
     if (t.name !== "") {
-      const newTasks = [...tasks];
+      // const newTasks = [...tasks];
       addTaskToFirebase({ name: t, completed: false });
       // storeTasks(newTasks);
       setTask({ name: "", completed: false });
@@ -101,24 +119,95 @@ function App({ db }) {
 
   return (
     <div className="App">
-      <input
-        className="form-control"
-        type="text"
-        placeholder="Enter Task"
-        value={task.name}
-        onChange={(e) => {
-          setTask(e.target.value);
-        }}
-      ></input>
-      <button
-        className="btn btn-success w-100"
-        onClick={() => {
-          addTask(task);
-        }}
-      >
-        Change
-      </button>
-      <ul className="list-group">{getTasks()}</ul>
+      <section className="vh-100 gradient-custom">
+        <div className="container py-5 h-100">
+          <div className="row d-flex justify-content-center align-items-center h-100">
+            <div className="col col-xl-10">
+              <div className="card">
+                <div className="card-body p-5">
+                  <div className="d-flex justify-content-center align-items-center mb-4">
+                    <div className="form-outline flex-fill">
+                      {/* <input type="text" id="form2" className="form-control" /> */}
+                      <input
+                        className="form-control"
+                        type="text"
+                        placeholder="Enter Task"
+                        value={task.name}
+                        onChange={(e) => {
+                          setTask(e.target.value);
+                        }}
+                      ></input>
+                    </div>
+                    <button
+                      className="btn btn-info ms-2"
+                      onClick={() => {
+                        addTask(task);
+                      }}
+                    >
+                      Add
+                    </button>
+                  </div>
+                  <ul
+                    className="nav nav-tabs mb-4 pb-2"
+                    id="ex1"
+                    role="tablist"
+                  >
+                    <li className="nav-item" role="presentation">
+                      <a
+                        className="nav-link active"
+                        id="ex1-tab-1"
+                        data-mdb-toggle="tab"
+                        href="#ex1-tabs-1"
+                        role="tab"
+                        aria-controls="ex1-tabs-1"
+                        aria-selected="true"
+                      >
+                        All
+                      </a>
+                    </li>
+                    <li className="nav-item" role="presentation">
+                      <a
+                        className="nav-link"
+                        id="ex1-tab-2"
+                        data-mdb-toggle="tab"
+                        href="#ex1-tabs-2"
+                        role="tab"
+                        aria-controls="ex1-tabs-2"
+                        aria-selected="false"
+                      >
+                        Active
+                      </a>
+                    </li>
+                    <li className="nav-item" role="presentation">
+                      <a
+                        className="nav-link"
+                        id="ex1-tab-3"
+                        data-mdb-toggle="tab"
+                        href="#ex1-tabs-3"
+                        role="tab"
+                        aria-controls="ex1-tabs-3"
+                        aria-selected="false"
+                      >
+                        Completed
+                      </a>
+                    </li>
+                  </ul>
+                  <div className="tab-content" id="ex1-content">
+                    <div
+                      className="tab-pane fade show active"
+                      id="ex1-tabs-1"
+                      role="tabpanel"
+                      aria-labelledby="ex1-tab-1"
+                    >
+                      <ul className="list-group mb-0">{getTasks()}</ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
