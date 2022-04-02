@@ -9,32 +9,34 @@ import {
   updateDoc,
   deleteDoc,
   query,
+  where,
   orderBy,
 } from "firebase/firestore";
 import List from "../list";
 import Controls from "../controls";
-import { getAuth, signOut } from "firebase/auth";
+import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
+import { useNavigate } from "react-router-dom";
 
 const Home = ({ db }) => {
+  let navigate = useNavigate();
 
   const auth = getAuth();
+  const [emailAddress, setEmailAddress] = useState("");
 
-  const logOut = (e) => {
-    e.preventDefault();
-    
-    signOut(auth).then(() => {
-      console.log('sign out successfull')
-    }).catch((error) => {
-      // An error happened.
-    });
-  };
-
-
-  const [task, setTask] = useState({ name: "", completed: false });
+  const [task, setTask] = useState({ name: "", email: emailAddress, completed: false });
   const [tasks, setTasks] = useState([]);
 
   useEffect(() => {
-    getDocs(query(collection(db, "tasks"), orderBy("time", "desc"))).then(
+
+    onAuthStateChanged(auth, (user) => {
+        if(!user) {
+          navigate('/login')
+        }
+        setEmailAddress(user.email)
+    });
+
+    getDocs(query(collection(db, "tasks"), 
+    orderBy("time", "desc"))).then(
       (querySnapshot) => {
         const allTasks = [];
         querySnapshot.forEach((doc) => {
@@ -89,12 +91,24 @@ const Home = ({ db }) => {
   const addTask = (t) => {
     if (t.name !== "") {
       // const newTasks = [...tasks];
-      addTaskToFirebase({ name: t, completed: false });
+      addTaskToFirebase({ name: t, email: emailAddress, completed: false });
       // storeTasks(newTasks);
-      setTask({ name: "", completed: false });
+      setTask({ name: "", email: emailAddress, completed: false });
     } else {
       alert("Enter value");
     }
+  };
+
+  const logOut = (e) => {
+    e.preventDefault();
+
+    signOut(auth)
+      .then(() => {
+        navigate("/login");
+      })
+      .catch((error) => {
+        // An error happened.
+      });
   };
 
   const listProps = { tasks, updateTask, deleteTask };
@@ -107,7 +121,6 @@ const Home = ({ db }) => {
             <div className="col col-xl-10">
               <div className="card">
                 <div className="card-body p-5">
-
                   <div className="d-flex justify-content-center align-items-center mb-4">
                     <div className="form-outline flex-fill"></div>
                     <button

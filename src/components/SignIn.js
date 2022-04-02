@@ -1,47 +1,27 @@
 import React, { useState } from "react";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import { useNavigate } from "react-router-dom";
 
 const SignIn = () => {
+  let navigate = useNavigate();
   const auth = getAuth();
 
   const [emailAddress, setEmailAddress] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  // const emailRef = useRef(null);
-  // const passwordRef = useRef(null);
+  const isInvalid = password === "" || emailAddress === "";
+
   const signUp = (e) => {
     e.preventDefault();
-    createUserWithEmailAndPassword(
-      auth,
-      emailAddress, password
-      // emailRef.current.value,
-      // passwordRef.current.value
-    )
-      .then((userCredential) => {
-        // Signed in
-        const user = userCredential.user;
-        console.log(user);
-      })
-      .catch((error) => {
-        console.log(error);
-
-        // ..
-      });
+    navigate("/register");
   };
 
-  const signIn = (e) => {
+  const signInUser = (e) => {
     e.preventDefault();
-    signInWithEmailAndPassword(
-      auth,
-      emailAddress, password
-      // emailRef.current.value,
-      // passwordRef.current.value
-    )
+    signInWithEmailAndPassword(auth, emailAddress, password)
       .then((userCredential) => {
-        // Signed in
-        const user = userCredential.user;
-        console.log(user);
+        navigate("/");
       })
       .catch((error) => {
         setEmailAddress("");
@@ -75,14 +55,18 @@ const SignIn = () => {
                       </div>
                       <form>
                         <p>Please login to your account</p>
-                        {error && <div className="alert alert-danger" role="alert">
-                        {error}
-                        </div>}
+                        {error && (
+                          <div className="alert alert-danger" role="alert">
+                            {error}
+                          </div>
+                        )}
                         <div className="form-outline mb-3">
                           <input
                             // ref={emailRef}
                             value={emailAddress}
-                            onChange={({ target }) => setEmailAddress(target.value)}
+                            onChange={({ target }) =>
+                              setEmailAddress(target.value)
+                            }
                             type="email"
                             id=""
                             className="form-control"
@@ -109,7 +93,8 @@ const SignIn = () => {
                           <button
                             className="btn btn-primary btn-block fa-lg gradient-custom-2 mb-3"
                             type="button"
-                            onClick={signIn}
+                            disabled={isInvalid}
+                            onClick={signInUser}
                           >
                             Log in
                           </button>
